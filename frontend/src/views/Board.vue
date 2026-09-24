@@ -100,21 +100,11 @@ onMounted(async () => {
   const boardId = parseInt(route.params.id)
   boardStore.currentBoard = { id: boardId, name: 'Loading...' }
   try {
-    await boardStore.fetchColumns(boardId)
-    await boardStore.fetchAllCards(boardId)
-    // Get board name from boards list or set from URL
-    const boards = boardStore.boards
-    const found = boards.find(b => b.id === boardId)
-    if (found) {
-      boardStore.currentBoard = found
-    } else {
-      // Fetch boards to get the name
-      await boardStore.fetchBoards()
-      const b = boardStore.boards.find(b => b.id === boardId)
-      if (b) boardStore.currentBoard = b
-    }
+    // One request returns board meta, columns and cards together, so the
+    // header and all columns render from a single consistent snapshot.
+    await boardStore.fetchBoardDetail(boardId)
   } catch (err) {
-    ElMessage.error('Failed to load board')
+    ElMessage.error(err.response?.status === 404 ? 'Board not found' : 'Failed to load board')
     router.push('/')
   }
 })

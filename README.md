@@ -76,8 +76,10 @@ The seed script creates a demo user with a sample board "My Project" containing 
 - `POST /api/auth/login` - Login (returns JWT)
 
 ### Boards
-- `GET /api/boards` - List user's boards
-- `POST /api/boards` - Create board
+- `GET /api/boards` - List user's boards (includes `column_count`, `card_count`, `default_column_id`, `default_column_name`)
+- `POST /api/boards` - Create board (default columns are created in one transaction; the response has the same shape as a list item)
+- `POST /api/boards/batch-summary` - Summarize multiple boards in one request; body `{ "ids": [1, 2] }`. Returns per-board `results` (with an `ok` flag for partial failures) and a single `summary` aggregate computed from the successful items
+- `GET /api/boards/:id` - Get a board's full snapshot in one response: board summary, columns and cards
 - `DELETE /api/boards/:id` - Delete board
 
 ### Columns

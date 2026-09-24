@@ -1,5 +1,17 @@
 <template>
-  <el-card class="board-card" shadow="hover" @click="$emit('open', board)">
+  <el-card
+    class="board-card"
+    :class="{ 'is-selected': selectable && selected }"
+    shadow="hover"
+    @click="$emit('open', board)"
+  >
+    <div v-if="selectable" class="board-select" @click.stop>
+      <el-checkbox
+        :model-value="selected"
+        @change="$emit('update:selected', $event)"
+        @click.stop
+      />
+    </div>
     <template #header>
       <div class="board-card-header">
         <h3>{{ board.name }}</h3>
@@ -35,10 +47,12 @@
 import { Delete, Grid, Document } from '@element-plus/icons-vue'
 
 defineProps({
-  board: { type: Object, required: true }
+  board: { type: Object, required: true },
+  selectable: { type: Boolean, default: false },
+  selected: { type: Boolean, default: false }
 })
 
-defineEmits(['open', 'delete'])
+defineEmits(['open', 'delete', 'update:selected'])
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
@@ -51,6 +65,22 @@ function formatDate(dateStr) {
 .board-card {
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+
+.board-card.is-selected {
+  box-shadow: 0 0 0 2px var(--el-color-primary);
+}
+
+.board-select {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 2;
+}
+
+.board-card:has(.board-select) .board-card-header h3 {
+  padding-left: 22px;
 }
 
 .board-card:hover {

@@ -36,6 +36,8 @@ export const authApi = {
 // Boards
 export const boardApi = {
   list: () => api.get('/boards'),
+  detail: (id) => api.get(`/boards/${id}`),
+  batchSummary: (ids) => api.post('/boards/batch-summary', { ids }),
   create: (name, description) => api.post('/boards', { name, description }),
   delete: (id) => api.delete(`/boards/${id}`)
 }
