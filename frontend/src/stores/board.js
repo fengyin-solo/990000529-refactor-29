@@ -22,8 +22,35 @@ export const useBoardStore = defineStore('board', () => {
 
   async function createBoard(name, description) {
     const res = await boardApi.create(name, description)
+    // The create response carries the same counts/columns shape as the list,
+    // so the new board shows its default columns immediately.
     boards.value.unshift(res.data)
     return res.data
+  }
+
+  // Batch read: resolve columns/cards counts and default columns for several
+  // boards in one request. Successful boards are merged into the local list;
+  // per-board failures are surfaced in the response instead of discarding
+  // everything that did resolve.
+  async function fetchBoardSummaries(boardIds) {
+    if (!Array.isArray(boardIds) || boardIds.length === 0) {
+      return { results: [], summary: { requested: 0, succeeded: 0, failed: 0, total_columns: 0, total_cards: 0 } }
+    }
+
+    const res = await boardApi.batchSummary(boardIds)
+    const { results, summary } = res.data
+
+    for (const item of results) {
+      if (!item.ok) continue
+      const idx = boards.value.findIndex(b => b.id === item.board.id)
+      if (idx !== -1) {
+        boards.value[idx] = item.board
+      } else {
+        boards.value.push(item.board)
+      }
+    }
+
+    return { results, summary }
   }
 
   async function deleteBoard(id) {
@@ -84,13 +111,25 @@ export const useBoardStore = defineStore('board', () => {
   }
 
   async function fetchAllCards(boardId) {
-    // Fetch cards for all columns in parallel
+    // Fetch cards for all columns in one batch. A single failed column must
+    // not discard the cards of every other column, so settle each request
+    // independently and merge only the ones that resolved.
     const cols = columns.value
-    const promises = cols.map(col => cardApi.list(col.id))
-    const results = await Promise.all(promises)
-    cols.forEach((col, i) => {
-      cards.value[col.id] = results[i].data
+    const settled = await Promise.allSettled(cols.map(col => cardApi.list(col.id)))
+    const failures = []
+    settled.forEach((result, i) => {
+      if (result.status === 'fulfilled') {
+        cards.value[cols[i].id] = result.value.data
+      } else {
+        failures.push({ columnId: cols[i].id, error: result.reason })
+      }
     })
+
+    // Only treat the board load as failed when nothing could be read.
+    if (cols.length > 0 && failures.length === cols.length) {
+      throw failures[0].error
+    }
+    return failures
   }
 
   async function addCard(columnId, data) {
@@ -149,7 +188,7 @@ export const useBoardStore = defineStore('board', () => {
 
   return {
     boards, currentBoard, columns, cards, loading,
-    fetchBoards, createBoard, deleteBoard,
+    fetchBoards, createBoard, fetchBoardSummaries, deleteBoard,
     fetchColumns, addColumn, renameColumn, deleteColumn, reorderColumn,
     fetchCards, fetchAllCards, addCard, updateCard, deleteCard, moveCard,
     clearBoard

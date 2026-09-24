@@ -37,6 +37,8 @@ export const authApi = {
 export const boardApi = {
   list: () => api.get('/boards'),
   create: (name, description) => api.post('/boards', { name, description }),
+  // Consolidated read for multiple boards (counts + columns) in one request
+  batchSummary: (boardIds) => api.post('/boards/batch-summary', { boardIds }),
   delete: (id) => api.delete(`/boards/${id}`)
 }
 
